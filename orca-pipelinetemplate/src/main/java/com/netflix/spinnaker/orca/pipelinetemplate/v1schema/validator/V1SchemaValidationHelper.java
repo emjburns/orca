@@ -47,7 +47,7 @@ public class V1SchemaValidationHelper {
         );
       }
 
-      if (stageDefinition.getDependsOn() != null && !stageDefinition.getDependsOn().isEmpty() &&
+      if (stageDefinition.getDependsOn() != null &&
         stageDefinition.getInject() != null && stageDefinition.getInject().hasAny()) {
         errors.add(new Error()
           .withMessage("A stage cannot have both dependsOn and an inject rule defined simultaneously")

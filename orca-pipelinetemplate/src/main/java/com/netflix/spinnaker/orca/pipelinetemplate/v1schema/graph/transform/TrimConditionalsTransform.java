@@ -35,8 +35,8 @@ public class TrimConditionalsTransform implements PipelineTemplateVisitor {
       .filter(StageDefinition::getRemoved)
       .forEach(conditionalStage -> pipelineTemplate.getStages()
         .stream()
-        .filter(childStage -> childStage.getDependsOn().removeIf(conditionalStage.getId()::equals))
-        .forEach(childStage -> childStage.getDependsOn().addAll(conditionalStage.getDependsOn())));
+        .filter(childStage -> childStage.getDependsOnSet().removeIf(conditionalStage.getId()::equals))
+        .forEach(childStage -> childStage.getDependsOnSet().addAll(conditionalStage.getDependsOnSet())));
 
     pipelineTemplate.setStages(
       pipelineTemplate.getStages()

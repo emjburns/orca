@@ -1,0 +1,43 @@
+{
+  "keepWaitingPipelines": false,
+  "limitConcurrent": true,
+  "application": "myApp",
+  "name": "My super awesome pipeline",
+  "stages": [
+    {
+      "requisiteStageRefIds": [],
+      "name": "wait1",
+      "id": null,
+      "refId": "wait1",
+      "type": "wait",
+      "waitTime": 20
+    },
+    {
+      "requisiteStageRefIds": [],
+      "id": null,
+      "name": "wait2",
+      "refId": "wait2",
+      "type": "wait",
+      "waitTime": 20
+    },
+    {
+      "requisiteStageRefIds": [],
+      "id": null,
+      "name": "wait3",
+      "refId": "wait3",
+      "type": "wait",
+      "waitTime": 20
+    },
+    {
+      "requisiteStageRefIds": ["wait1", "wait2", "wait3"],
+      "id": null,
+      "name": "finalWait",
+      "refId": "finalWait",
+      "type": "wait",
+      "waitTime": 15
+    }
+  ],
+  "id": "unknown",
+  "notifications": [],
+  "parameterConfig": []
+}

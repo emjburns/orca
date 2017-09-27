@@ -32,9 +32,7 @@ import com.netflix.spinnaker.orca.pipelinetemplate.v1schema.render.Renderer;
 import com.netflix.spinnaker.orca.pipelinetemplate.validator.Errors;
 import com.netflix.spinnaker.orca.pipelinetemplate.validator.Errors.Error;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -104,6 +102,7 @@ public class RenderTransform implements PipelineTemplateVisitor {
 
   @SuppressWarnings("unchecked")
   private void renderStage(StageDefinition stage, RenderContext context, String locationNamespace) {
+    //BEGIN RENDERING
     Object rendered;
     try {
       rendered = RenderUtil.deepRender(renderer, stage.getConfig(), context);
@@ -125,6 +124,7 @@ public class RenderTransform implements PipelineTemplateVisitor {
     }
     stage.setConfig((Map<String, Object>) rendered);
 
+    // here is where specific properties are rendered
     stage.setName(renderStageProperty(stage.getName(), context, getStagePropertyLocation(locationNamespace, stage.getId(), "name")));
     stage.setComments(renderStageProperty(stage.getComments(), context, getStagePropertyLocation(locationNamespace, stage.getId(), "comments")));
     stage.setWhen(
@@ -133,6 +133,35 @@ public class RenderTransform implements PipelineTemplateVisitor {
         .map(w -> renderStageProperty(w, context, getStagePropertyLocation(locationNamespace, stage.getId(), "when")))
         .collect(Collectors.toList())
     );
+    // oh no this is a set. how is this solved elsewhere?
+    stage.setDependsOn(renderStageSet(stage.getDependsOn(), context, getStagePropertyLocation(locationNamespace, stage.getId(), "dependsOn")));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> renderStageSet(Object input, RenderContext context, String location) {
+    Object result;
+    try {
+      result = RenderUtil.deepRender(renderer, input, context);
+    } catch (TemplateRenderException e) {
+      throw TemplateRenderException.fromError(
+        new Error()
+          .withMessage("Failed rendering stage property")
+          .withLocation(location),
+        e
+      );
+    }
+
+    if (result == null){
+      return new LinkedHashSet<>();
+    }
+    if (!(result instanceof Collection)){
+      throw TemplateRenderException.fromError(
+        new Error()
+          .withMessage("Failed rendering stage property, not a collection")
+          .withLocation(location)
+        );
+    }
+    return new LinkedHashSet<>((Collection<String>) result);
   }
 
   private String renderStageProperty(String input, RenderContext context, String location) {
@@ -204,7 +233,7 @@ public class RenderTransform implements PipelineTemplateVisitor {
         renderedStage.setPartialDefinitionContext(new PartialDefinitionContext(partial, stage));
         renderedStage.setId(String.format("%s.%s", stage.getId(), renderedStage.getId()));
         renderedStage.setDependsOn(
-          renderedStage.getDependsOn().stream()
+          renderedStage.getDependsOnSet().stream()
             .map(d -> String.format("%s.%s", stage.getId(), d))
             .collect(Collectors.toSet())
         );

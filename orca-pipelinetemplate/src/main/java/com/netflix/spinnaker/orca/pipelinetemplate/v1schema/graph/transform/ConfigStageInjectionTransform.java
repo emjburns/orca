@@ -22,6 +22,7 @@ import com.netflix.spinnaker.orca.pipelinetemplate.v1schema.model.PipelineTempla
 import com.netflix.spinnaker.orca.pipelinetemplate.v1schema.model.StageDefinition;
 import com.netflix.spinnaker.orca.pipelinetemplate.v1schema.model.StageDefinition.InjectionRule;
 import com.netflix.spinnaker.orca.pipelinetemplate.v1schema.model.TemplateConfiguration;
+import com.netflix.spinnaker.orca.pipelinetemplate.validator.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,7 @@ public class ConfigStageInjectionTransform implements PipelineTemplateVisitor {
 
   @Override
   public void visitPipelineTemplate(PipelineTemplate pipelineTemplate) {
+    validateDagRules(pipelineTemplate);
     expandStagePartials(pipelineTemplate);
     replaceStages(pipelineTemplate);
     injectStages(pipelineTemplate);
@@ -71,6 +73,26 @@ public class ConfigStageInjectionTransform implements PipelineTemplateVisitor {
         }
       }
     }
+  }
+
+  private void validateDagRules(PipelineTemplate pipelineTemplate) {
+    templateConfiguration.getStages().forEach(s -> {
+      if (shouldRequireDagRules(s, templateConfiguration, pipelineTemplate.getStages().stream().map(StageDefinition::getId).collect(Collectors.toList()))) {
+        throw new IllegalTemplateConfigurationException(
+          new Errors.Error()
+            .withMessage("A configuration-defined stage should have either dependsOn or an inject rule defined")
+            .withLocation((String.format("configuration:stages.%s", s.getId())))
+            .withSeverity(Errors.Severity.WARN)
+        );
+      }
+    });
+  }
+
+  private static boolean shouldRequireDagRules(StageDefinition s, TemplateConfiguration config, List<String> stageIds) {
+    return config.getPipeline().getTemplate() != null &&
+      !stageIds.contains(s.getId()) &&
+      (s.getDependsOn() == null || s.getDependsOnSet().isEmpty()) &&
+      (s.getInject() == null || !s.getInject().hasAny());
   }
 
   private void expandStagePartials(PipelineTemplate pipelineTemplate) {
@@ -101,15 +123,15 @@ public class ConfigStageInjectionTransform implements PipelineTemplateVisitor {
 
       // assign root nodes to placeholder's dependsOn value
       stages.stream()
-        .filter(s -> s.getDependsOn().isEmpty())
+        .filter(s -> s.getDependsOnSet().isEmpty())
         .forEach(s -> s.setDependsOn(partialPlaceholder.getDependsOn()));
 
       // And assign them as the dependsOn of the placeholder partial stage
       templateStages.stream()
-        .filter(s -> s.getDependsOn().contains(partialPlaceholder.getId()))
+        .filter(s -> s.getDependsOnSet().contains(partialPlaceholder.getId()))
         .forEach(s -> {
-          s.getDependsOn().remove(partialPlaceholder.getId());
-          s.getDependsOn().addAll(leafNodes);
+          s.getDependsOnSet().remove(partialPlaceholder.getId());
+          s.getDependsOnSet().addAll(leafNodes);
         });
 
       addStages.addAll(stages);
@@ -126,7 +148,7 @@ public class ConfigStageInjectionTransform implements PipelineTemplateVisitor {
     // Create initial graph via dependsOn. We need to include stages that the configuration defines with dependsOn as well
     List<StageDefinition> initialStages = pipelineTemplate.getStages();
     initialStages.addAll(templateConfiguration.getStages().stream()
-      .filter(s -> !s.getDependsOn().isEmpty())
+      .filter(s -> !s.getDependsOnSet().isEmpty())
       .collect(Collectors.toList()));
 
     pipelineTemplate.setStages(
@@ -178,7 +200,7 @@ public class ConfigStageInjectionTransform implements PipelineTemplateVisitor {
     Set<StageDefinition> sorted = new LinkedHashSet<>();
     Map<String, Status> state = new HashMap<>();
 
-    stages.forEach(s -> s.setRequisiteStageRefIds(s.getDependsOn()));
+    stages.forEach(s -> s.setRequisiteStageRefIds(s.getDependsOnSet()));
 
     Map<String, StageDefinition> graph = stages
       .stream()

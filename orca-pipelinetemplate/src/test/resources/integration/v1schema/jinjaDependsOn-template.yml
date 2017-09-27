@@ -1,0 +1,32 @@
+schema: "1"
+id: root-template
+metadata:
+  name: Simple wait template
+  description: Extendable root template
+variables:
+- name: waitTime
+  description: The time a wait stage should pause
+  type: int
+- name: stages
+  description: The stages the last stage depends on
+stages:
+- id: wait1
+  type: wait
+  config:
+    waitTime: "{{ waitTime }}"
+- id: wait2
+  type: wait
+  config:
+    waitTime: "{{ waitTime }}"
+- id: wait3
+  type: wait
+  config:
+    waitTime: "{{ waitTime }}"
+- id: finalWait
+  type: wait
+  config:
+    waitTime: 15
+  dependsOn: |
+    {% for stage in stages %}
+    - {{ stage }}
+    {% endfor %}

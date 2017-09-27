@@ -1,0 +1,14 @@
+schema: "1"
+pipeline:
+  application: myApp
+  name: My super awesome pipeline
+  template:
+    source: jinjaDependsOn-template.yml
+  variables:
+    waitTime: 20
+    stages:
+    - wait1
+    - wait2
+    - wait3
+configuration:
+  triggers: []

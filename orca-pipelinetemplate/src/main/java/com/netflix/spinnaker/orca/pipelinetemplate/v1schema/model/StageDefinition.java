@@ -16,23 +16,17 @@
 package com.netflix.spinnaker.orca.pipelinetemplate.v1schema.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.LinkedHashSet;
+import java.util.*;
 
 public class StageDefinition implements Identifiable, Conditional, Cloneable {
 
   private String id;
   private String name;
   private InjectionRule inject;
-  private Set<String> dependsOn = new LinkedHashSet<>();
+  private Object dependsOn;
   private String type;
   private Map<String, Object> config;
   private List<Map<String, Object>> notifications = new ArrayList<>();
@@ -214,12 +208,23 @@ public class StageDefinition implements Identifiable, Conditional, Cloneable {
     this.inject = inject;
   }
 
-  public Set<String> getDependsOn() {
+  public Object getDependsOn() {
     return dependsOn;
   }
 
-  public void setDependsOn(Set<String> dependsOn) {
-    this.dependsOn = dependsOn;
+  @SuppressWarnings("unchecked")
+  @JsonIgnore
+  public Set<String> getDependsOnSet() {
+    if (dependsOn == null) {
+      dependsOn = new LinkedHashSet<String>();
+    }
+    return (Set<String>)dependsOn;
+  }
+
+  @SuppressWarnings("unchecked")
+  @JsonSetter("dependsOn")
+  public void setDependsOn(Object dependsOn) {
+    this.dependsOn = (dependsOn instanceof Collection)? new LinkedHashSet<String>((Collection) dependsOn) : dependsOn;
   }
 
   public String getType() {
@@ -313,7 +318,7 @@ public class StageDefinition implements Identifiable, Conditional, Cloneable {
   @Override
   public Object clone() throws CloneNotSupportedException {
     StageDefinition stage = (StageDefinition) super.clone();
-    stage.setDependsOn(new LinkedHashSet<>(getDependsOn()));
+    stage.setDependsOn(new LinkedHashSet<>(getDependsOnSet()));
     stage.setConfig(new HashMap<>(getConfig()));
     Collections.copy(stage.getNotifications(), getNotifications());
     Collections.copy(stage.getWhen(), getWhen());
