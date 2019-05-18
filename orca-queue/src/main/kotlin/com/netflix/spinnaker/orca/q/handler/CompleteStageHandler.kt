@@ -92,7 +92,7 @@ class CompleteStageHandler(
         }
 
         try {
-          if (status in setOf(RUNNING, NOT_STARTED) || (status.isComplete && !status.isHalt)) {
+          if (status in setOf(RUNNING, NOT_STARTED, SUCCEEDED, SKIPPED)) {
             // check to see if this stage has any unplanned synthetic after stages
             var afterStages = stage.firstAfterStages()
             if (afterStages.isEmpty()) {
